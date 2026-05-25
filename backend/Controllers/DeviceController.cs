@@ -1,86 +1,154 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.Models;
+using backend.DTOs;
+using Microsoft.AspNetCore.Authorization;
+using backend.Helpers;
 
 namespace backend.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class DeviceController : ControllerBase
+    [Authorize(Policy = "ALL_ROLES")]
+    [Route("api/v1/[controller]")]
+    public class DevicesController : ControllerBase
     {
         private readonly AppDbContext _context;
 
-        public DeviceController(AppDbContext context)
+        public DevicesController(AppDbContext context)
         {
             _context = context;
         }
 
-        // ================= GET ALL =================
-        [HttpGet]
-        public IActionResult GetAll()
+        private static DateTime? ToUtc(DateTime? dt)
         {
-            var data = new List<Device>
+            if (!dt.HasValue) return null;
+            var v = dt.Value;
+            return v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v.Date, DateTimeKind.Utc);
+        }
+
+        private IQueryable<Device> ApplyRoleFilter(IQueryable<Device> query)
+        {
+            var role = User.GetUserRole();
+            var userId = User.GetUserId();
+
+            if (role == "EMPLOYEE")
+                return query.Where(d => d.AssignedUserId == userId && d.Status == "ASSIGNED");
+
+            return query;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll([FromQuery] string? keyword, [FromQuery] string? status)
+        {
+            try
             {
-                new Device { Id = 1, Name = "Laptop", Price = 1500 },
-                new Device { Id = 2, Name = "Chuột", Price = 200 },
-                new Device { Id = 3, Name = "Bàn phím", Price = 500 }
+                var query = _context.Devices
+                    .Include(d => d.AssignedUser)
+                    .AsQueryable();
+
+                query = ApplyRoleFilter(query);
+
+                if (!string.IsNullOrEmpty(keyword))
+                {
+                    var cleanKeyword = keyword.Replace("TB-", "", StringComparison.OrdinalIgnoreCase)
+                                              .Replace("TB", "", StringComparison.OrdinalIgnoreCase)
+                                              .TrimStart('0')
+                                              .Trim();
+                    if (long.TryParse(cleanKeyword, out long searchId))
+                    {
+                        query = query.Where(d => d.Name.Contains(keyword) || d.Id == searchId);
+                    }
+                    else
+                    {
+                        query = query.Where(d => d.Name.Contains(keyword));
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(status))
+                    query = query.Where(d => d.Status == status);
+
+                var devices = await query.OrderByDescending(d => d.Id).ToListAsync();
+                return Ok(new { data = devices });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = new { code = "DB_ERROR", message = ex.Message } });
+            }
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(long id)
+        {
+            var query = ApplyRoleFilter(_context.Devices.Include(d => d.AssignedUser));
+            var device = await query.FirstOrDefaultAsync(d => d.Id == id);
+
+            if (device == null)
+                return NotFound(new { error = new { code = "DEVICE_NOT_FOUND", message = "Không tìm thấy thiết bị" } });
+
+            return Ok(device);
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "IT_ADMIN")]
+        public async Task<IActionResult> Create([FromBody] CreateDeviceDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new { error = new { code = "VALIDATION_ERROR", message = "Tên thiết bị không được để trống" } });
+
+            var device = new Device
+            {
+                Name = dto.Name.Trim(),
+                Type = dto.Type,
+                PurchaseDate = ToUtc(dto.PurchaseDate),
+                OriginalCost = dto.OriginalCost,
+                Status = string.IsNullOrEmpty(dto.Status) ? "AVAILABLE" : dto.Status,
+                AssignedUserId = null
             };
 
-            return Ok(data);
-        }
-
-        // ================= GET BY ID =================
-        [HttpGet("{id}")]
-        public IActionResult GetById(int id)
-        {
-            var device = _context.Devices.Find(id);
-
-            if (device == null)
-                return NotFound();
-
-            return Ok(device);
-        }
-
-        // ================= POST =================
-        [HttpPost]
-        public IActionResult Create(Device device)
-        {
             _context.Devices.Add(device);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
-            return Ok(device);
+            return CreatedAtAction(nameof(GetById), new { id = device.Id }, device);
         }
 
-        // ================= PUT =================
         [HttpPut("{id}")]
-        public IActionResult Update(int id, Device newData)
+        [Authorize(Policy = "IT_ADMIN")]
+        public async Task<IActionResult> Update(long id, [FromBody] UpdateDeviceDto dto)
         {
-            var device = _context.Devices.Find(id);
-
+            var device = await _context.Devices.FindAsync(id);
             if (device == null)
-                return NotFound();
+                return NotFound(new { error = new { code = "DEVICE_NOT_FOUND", message = "Không tìm thấy thiết bị" } });
 
-            device.Name = newData.Name;
-            device.Price = newData.Price;
+            if (device.Status == "DISPOSED")
+                return BadRequest(new { error = new { code = "DEVICE_DISPOSED", message = "Thiết bị đã thanh lý, không thể sửa" } });
 
-            _context.SaveChanges();
+            device.Name = dto.Name.Trim();
+            device.Type = dto.Type;
+            device.PurchaseDate = ToUtc(dto.PurchaseDate);
+            device.OriginalCost = dto.OriginalCost;
+            device.Status = dto.Status;
 
-            return Ok(device);
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Cập nhật thiết bị thành công", data = device });
         }
 
-        // ================= DELETE =================
-        [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        [HttpPatch("{id}/dispose")]
+        [Authorize(Policy = "IT_ADMIN")]
+        public async Task<IActionResult> Dispose(long id)
         {
-            var device = _context.Devices.Find(id);
-
+            var device = await _context.Devices.FindAsync(id);
             if (device == null)
-                return NotFound();
+                return NotFound(new { error = new { code = "DEVICE_NOT_FOUND", message = "Không tìm thấy thiết bị" } });
 
-            _context.Devices.Remove(device);
-            _context.SaveChanges();
+            if (device.Status == "DISPOSED")
+                return BadRequest(new { error = new { code = "ALREADY_DISPOSED", message = "Thiết bị đã được thanh lý" } });
 
-            return Ok();
+            device.Status = "DISPOSED";
+            device.AssignedUserId = null;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Chuyển thiết bị sang trạng thái Thanh lý thành công", status = "DISPOSED" });
         }
     }
 }

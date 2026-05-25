@@ -1,0 +1,39 @@
+# Task Checklist
+
+- `[/]` **Cấu hình Backend & Database**
+  - `[x]` Cài đặt package `Npgsql.EntityFrameworkCore.PostgreSQL`.
+  - `[x]` Thêm Connection String vào `appsettings.json`.
+  - `[x]` Khởi tạo các Entity Classes (User, Device, Request, RequestDevice, AllocationHistory, ReturnHistory, Depreciation).
+  - `[x]` Cấu hình `AppDbContext` (Fluent API, Relations).
+  - `[/]` Chạy Migration và Update Database (Gặp lỗi sai mật khẩu PostgreSQL).
+
+- `[ ]` **Backend: Authentication & User Service**
+  - `[ ]` Cài đặt package JWT Bearer.
+  - `[ ]` Implement `AuthService` và `AuthController` (Login, Register/Create User).
+  - `[ ]` Cấu hình Middleware JWT trong `Program.cs`.
+
+- `[ ]` **Backend: Device Management**
+  - `[ ]` Implement `DeviceService` và `DeviceController` (CRUD Thiết bị).
+  - `[ ]` Thêm DTOs cho Device.
+
+- `[ ]` **Backend: Request Management & Allocation/Return**
+  - `[ ]` Implement API Tạo Yêu Cầu Cấp Phát / Thu Hồi.
+  - `[ ]` Implement API Duyệt Yêu Cầu và Cập nhật trạng thái Thiết Bị.
+  - `[ ]` Ghi nhận `AllocationHistory` và `ReturnHistory`.
+
+- `[ ]` **Backend: Depreciation & Dashboard**
+  - `[ ]` Implement API cấu hình khấu hao.
+  - `[ ]` Implement API tính khấu hao và giá trị còn lại.
+  - `[ ]` Implement Dashboard API.
+
+- `[ ]` **Frontend: Cấu trúc & Định tuyến (React/Vite)**
+  - `[ ]` Cấu hình React Router.
+  - `[ ]` Thiết lập trang Login, Private Routes.
+  - `[ ]` Cấu hình Axios Interceptors.
+
+- `[ ]` **Frontend: Xây dựng Giao diện UI**
+  - `[ ]` Main Layout (Sidebar + Header).
+  - `[ ]` Dashboard Page.
+  - `[ ]` Quản lý Thiết Bị (Danh sách, Form thêm/sửa).
+  - `[ ]` Quản lý Yêu Cầu.
+  - `[ ]` Quản lý Khấu Hao.

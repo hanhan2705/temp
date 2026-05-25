@@ -62,13 +62,13 @@ export default function Login() {
               placeholder="Enter your password"
               required
             />
-            <button
+            {/* <button
               type="button"
               className="password-toggle"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? "Ẩn" : "Hiện"}
-            </button>
+            </button> */}
           </div>
           <button type="submit" className="login-btn">Đăng nhập vào hệ thống →</button>
         </form>

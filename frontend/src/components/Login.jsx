@@ -9,6 +9,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -54,19 +55,26 @@ export default function Login() {
             <div className="form-label">Mật khẩu</div>
             <input
               className="form-input"
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete='off'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
             />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "Ẩn" : "Hiện"}
+            </button>
           </div>
           <button type="submit" className="login-btn">Đăng nhập vào hệ thống →</button>
         </form>
-        {/* <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text3)', textAlign: 'center' }}>
+        <div style={{ marginTop: '16px', fontSize: '12px', color: 'var(--text3)', textAlign: 'center' }}>
           Demo: admin@ / hr@ / mai@company.com — mật khẩu 12345678
-        </div> */}
+        </div>
         {error && (
           <div style={{ color: 'var(--danger)', marginTop: '16px', fontSize: '13px', textAlign: 'center' }}>{error}</div>
         )}

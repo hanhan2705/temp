@@ -14,4 +14,6 @@ COPY --from=build /app/publish .
 
 EXPOSE 8080
 
+CMD ["dotnet", "watch", "run", "--urls", "http://+:8080"]
+
 ENTRYPOINT ["dotnet", "backend.dll"]

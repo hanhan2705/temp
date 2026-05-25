@@ -7,7 +7,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: [
-      'soothing-kindness-production-f3dd.up.railway.app',
+      'assetflow-demo.up.railway.app',
       'all'
     ]
   },
@@ -15,7 +15,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: [
-      'soothing-kindness-production-f3dd.up.railway.app',
+      'assetflow-demo.up.railway.app',
       'all'
     ]
   }

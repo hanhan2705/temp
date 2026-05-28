@@ -110,6 +110,15 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     DbInitializer.ApplyMigrationsAndPatch(db);
+
+    // --- SEED DATA ---
+    var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
+    
+    // Tạo tài khoản user mẫu
+    authService.SeedAdminAsync().GetAwaiter().GetResult();
+    
+    // Tạo thiết bị, yêu cầu mẫu
+    authService.SeedDataAsync().GetAwaiter().GetResult();
 }
 
 if (app.Environment.IsDevelopment())

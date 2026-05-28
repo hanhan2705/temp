@@ -26,7 +26,7 @@ export function getUserDisplay(user) {
   return {
     name: user.fullName || cfg.name,
     role,
-    initials,
+    // initials,
     accent: cfg.accent,
     email: user.email || cfg.email,
   };

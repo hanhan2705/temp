@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');

@@ -13,7 +13,7 @@ import {
 } from '../api';
 import { getStoredUser } from '../utils/user';
 import { PERMISSIONS } from '../utils/permissions';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 import { getApiError } from '../utils/apiError';
 
 export default function Requests() {

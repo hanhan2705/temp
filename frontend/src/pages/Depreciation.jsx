@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getDepreciations, getDevices, setupDepreciation } from '../api';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 import { getApiError } from '../utils/apiError';
 
 export default function Depreciation() {

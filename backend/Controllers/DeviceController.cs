@@ -1,10 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.Data;
-using backend.Models;
 using backend.DTOs;
-using Microsoft.AspNetCore.Authorization;
 using backend.Helpers;
+using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
@@ -13,75 +11,28 @@ namespace backend.Controllers
     [Route("api/v1/[controller]")]
     public class DevicesController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly IDeviceService _deviceService;
 
-        public DevicesController(AppDbContext context)
+        public DevicesController(IDeviceService deviceService)
         {
-            _context = context;
-        }
-
-        private static DateTime? ToUtc(DateTime? dt)
-        {
-            if (!dt.HasValue) return null;
-            var v = dt.Value;
-            return v.Kind == DateTimeKind.Utc ? v : DateTime.SpecifyKind(v.Date, DateTimeKind.Utc);
-        }
-
-        private IQueryable<Device> ApplyRoleFilter(IQueryable<Device> query)
-        {
-            var role = User.GetUserRole();
-            var userId = User.GetUserId();
-
-            if (role == "EMPLOYEE")
-                return query.Where(d => d.AssignedUserId == userId && d.Status == "ASSIGNED");
-
-            return query;
+            _deviceService = deviceService;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? keyword, [FromQuery] string? status)
         {
-            try
-            {
-                var query = _context.Devices
-                    .Include(d => d.AssignedUser)
-                    .AsQueryable();
-
-                query = ApplyRoleFilter(query);
-
-                if (!string.IsNullOrEmpty(keyword))
-                {
-                    var cleanKeyword = keyword.Replace("TB-", "", StringComparison.OrdinalIgnoreCase)
-                                              .Replace("TB", "", StringComparison.OrdinalIgnoreCase)
-                                              .TrimStart('0')
-                                              .Trim();
-                    if (long.TryParse(cleanKeyword, out long searchId))
-                    {
-                        query = query.Where(d => d.Name.Contains(keyword) || d.Id == searchId);
-                    }
-                    else
-                    {
-                        query = query.Where(d => d.Name.Contains(keyword));
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(status))
-                    query = query.Where(d => d.Status == status);
-
-                var devices = await query.OrderByDescending(d => d.Id).ToListAsync();
-                return Ok(new { data = devices });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = new { code = "DB_ERROR", message = ex.Message } });
-            }
+            var role = User.GetUserRole();
+            var userId = User.GetUserId();
+            var devices = await _deviceService.GetAllAsync(keyword, status, role, userId);
+            return Ok(new { data = devices });
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(long id)
         {
-            var query = ApplyRoleFilter(_context.Devices.Include(d => d.AssignedUser));
-            var device = await query.FirstOrDefaultAsync(d => d.Id == id);
+            var role = User.GetUserRole();
+            var userId = User.GetUserId();
+            var device = await _deviceService.GetByIdAsync(id, role, userId);
 
             if (device == null)
                 return NotFound(new { error = new { code = "DEVICE_NOT_FOUND", message = "Không tìm thấy thiết bị" } });
@@ -96,59 +47,36 @@ namespace backend.Controllers
             if (string.IsNullOrWhiteSpace(dto.Name))
                 return BadRequest(new { error = new { code = "VALIDATION_ERROR", message = "Tên thiết bị không được để trống" } });
 
-            var device = new Device
-            {
-                Name = dto.Name.Trim(),
-                Type = dto.Type,
-                PurchaseDate = ToUtc(dto.PurchaseDate),
-                OriginalCost = dto.OriginalCost,
-                Status = string.IsNullOrEmpty(dto.Status) ? "AVAILABLE" : dto.Status,
-                AssignedUserId = null
-            };
-
-            _context.Devices.Add(device);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetById), new { id = device.Id }, device);
+            var device = await _deviceService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = ((dynamic)device).Id }, device);
         }
 
         [HttpPut("{id}")]
         [Authorize(Policy = "IT_ADMIN")]
         public async Task<IActionResult> Update(long id, [FromBody] UpdateDeviceDto dto)
         {
-            var device = await _context.Devices.FindAsync(id);
-            if (device == null)
-                return NotFound(new { error = new { code = "DEVICE_NOT_FOUND", message = "Không tìm thấy thiết bị" } });
+            var (success, message, data) = await _deviceService.UpdateAsync(id, dto);
 
-            if (device.Status == "DISPOSED")
-                return BadRequest(new { error = new { code = "DEVICE_DISPOSED", message = "Thiết bị đã thanh lý, không thể sửa" } });
-
-            device.Name = dto.Name.Trim();
-            device.Type = dto.Type;
-            device.PurchaseDate = ToUtc(dto.PurchaseDate);
-            device.OriginalCost = dto.OriginalCost;
-            device.Status = dto.Status;
-
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "Cập nhật thiết bị thành công", data = device });
+            return message switch
+            {
+                "DEVICE_NOT_FOUND" => NotFound(new { error = new { code = message, message = "Không tìm thấy thiết bị" } }),
+                "DEVICE_DISPOSED"  => BadRequest(new { error = new { code = message, message = "Thiết bị đã thanh lý, không thể sửa" } }),
+                _ => Ok(new { message = "Cập nhật thiết bị thành công", data })
+            };
         }
 
         [HttpPatch("{id}/dispose")]
         [Authorize(Policy = "IT_ADMIN")]
         public async Task<IActionResult> Dispose(long id)
         {
-            var device = await _context.Devices.FindAsync(id);
-            if (device == null)
-                return NotFound(new { error = new { code = "DEVICE_NOT_FOUND", message = "Không tìm thấy thiết bị" } });
+            var (success, message) = await _deviceService.DisposeAsync(id);
 
-            if (device.Status == "DISPOSED")
-                return BadRequest(new { error = new { code = "ALREADY_DISPOSED", message = "Thiết bị đã được thanh lý" } });
-
-            device.Status = "DISPOSED";
-            device.AssignedUserId = null;
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Chuyển thiết bị sang trạng thái Thanh lý thành công", status = "DISPOSED" });
+            return message switch
+            {
+                "DEVICE_NOT_FOUND"  => NotFound(new { error = new { code = message, message = "Không tìm thấy thiết bị" } }),
+                "ALREADY_DISPOSED"  => BadRequest(new { error = new { code = message, message = "Thiết bị đã được thanh lý" } }),
+                _ => Ok(new { message, status = "DISPOSED" })
+            };
         }
     }
 }

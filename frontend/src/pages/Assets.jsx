@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { getDevices, createDevice, updateDevice, disposeDevice, getUsers } from '../api';
 import { getStoredUser } from '../utils/user';
 import { PERMISSIONS } from '../utils/permissions';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 import { getApiError } from '../utils/apiError';
 
 const STATUS_MAP = {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAllocationHistory, getRecoveryHistory } from '../api';
 import { getApiError } from '../utils/apiError';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 
 export default function AllocationHistory() {
   const [allocations, setAllocations] = useState([]);

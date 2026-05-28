@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getUsers, createUser, updateUser } from '../api';
 import { getStoredUser } from '../utils/user';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 import { getApiError } from '../utils/apiError';
 
 const ROLE_OPTIONS = [

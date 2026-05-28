@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getActivityHistory } from '../api';
 import { getApiError } from '../utils/apiError';
-import { useToast } from './Toast';
+import { useToast } from '../components/Toast';
 
 export default function History() {
   const [rows, setRows] = useState([]);

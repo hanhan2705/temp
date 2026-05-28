@@ -17,12 +17,12 @@ export function getUserDisplay(user) {
   if (!user) return ROLE_CONFIG.IT_ADMIN;
   const role = user.role || 'IT_ADMIN';
   const cfg = ROLE_CONFIG[role] || ROLE_CONFIG.IT_ADMIN;
-  const initials = (user.fullName || cfg.name)
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  // const initials = (user.fullName || cfg.name)
+  //   .split(' ')
+  //   .map((w) => w[0])
+  //   .join('')
+  //   .slice(0, 2)
+  //   .toUpperCase();
   return {
     name: user.fullName || cfg.name,
     role,

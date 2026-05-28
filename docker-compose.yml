@@ -39,5 +39,6 @@ services:
       - "5173:5173"
     depends_on:
       - backend
-volumes:
-  postgres_data:
+
+# volumes:
+#   postgres_data:
